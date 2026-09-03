@@ -94,7 +94,7 @@ export function rankSegmentsForTeam(state, team, hours) {
   return state.segments
     .map((seg) => {
       const pod = estimatePod(team, seg, hours);
-      return { segment: seg.id, name: seg.name, remainingPoa: poa[seg.id], estimatedPod: pod, expectedGain: (poa[seg.id] * pod) / 100 };
+      return { segment: seg.id, name: seg.name, remainingPoa: poa[seg.id], estimatedPod: pod, expectedGain: poa[seg.id] * pod };
     })
     .sort((a, b) => b.expectedGain - a.expectedGain);
 }
@@ -179,6 +179,14 @@ export function addLog(state, author, text, kind = 'note') {
   return entry;
 }
 
+// Attributed note from an agent. Snapshotted so Undo removes exactly this note.
+export function agentLogEntry(state, agent, text) {
+  requireAgent(agent);
+  if (!text || !String(text).trim()) throw new EngineError('Text is required.');
+  snapshot(state);
+  return addLog(state, agent.name, String(text).trim(), 'agent');
+}
+
 export function recordSearch(state, teamRef, segmentRef, pod, note, author, opts = {}) {
   const team = findTeam(state, teamRef);
   const seg = findSegment(state, segmentRef);
@@ -195,6 +203,7 @@ export function checkIn(state, name, role) {
   const roles = ['planning', 'team_lead'];
   const r = String(role || 'planning').toLowerCase();
   if (!roles.includes(r)) throw new EngineError(`Unknown role "${role}".`, 'Role must be "planning" (may propose for any team) or "team_lead" (may propose only for its own team).');
+  snapshot(state);
   const agent = { id: `G${state.nextId++}`, name: String(name).trim(), role: r, team: null, checkedInAt: nowStamp(state) };
   state.agents.push(agent);
   addLog(state, agent.name, `Agent checked in with role ${r}.`, 'agent');
@@ -225,10 +234,13 @@ export function proposeAssignment(state, agent, teamRef, segmentRef, rationale, 
   const h = clampHours(hours);
   const pod = estimatePod(team, seg, h);
   const poa = remainingPoa(state)[seg.id];
+  const pullsFrom = ['searching', 'en route'].includes(team.status) ? team.segment : null;
   snapshot(state);
   const p = {
     id: `P${state.nextId++}`,
     kind: 'assignment',
+    reassignment: !!pullsFrom,
+    pullsFrom,
     team: team.id,
     teamCallsign: team.callsign,
     segment: seg.id,
@@ -237,13 +249,13 @@ export function proposeAssignment(state, agent, teamRef, segmentRef, rationale, 
     rationale: String(rationale).trim(),
     estimatedPod: round(pod * 100),
     remainingPoa: round(poa),
-    expectedGain: round((poa * pod) / 100, 1),
+    expectedGain: round(poa * pod, 1),
     proposedBy: agent.name,
     status: 'staged',
     time: nowStamp(state),
   };
   state.proposals.push(p);
-  addLog(state, agent.name, `Proposed ${team.callsign} to ${seg.id} ${seg.name} for ${h}h (est. POD ${p.estimatedPod}%). Awaiting IC approval.`, 'proposal');
+  addLog(state, agent.name, `Proposed ${team.callsign} to ${seg.id} ${seg.name} for ${h}h (est. POD ${p.estimatedPod}%)${pullsFrom ? `, pulling them off ${pullsFrom}` : ''}. Awaiting IC approval.`, 'proposal');
   return p;
 }
 

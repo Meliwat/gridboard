@@ -135,6 +135,9 @@ test('ranking prefers high remaining POA with good detectability', () => {
   const ranked = rankSegmentsForTeam(s, findTeam(s, 'Drone 5'), 1.5);
   assert.equal(ranked.length, s.segments.length);
   assert.ok(ranked[0].expectedGain >= ranked.at(-1).expectedGain);
+  // gain is in probability points: remaining POA (percent) times POD (fraction)
+  assert.ok(Math.abs(ranked[0].expectedGain - ranked[0].remainingPoa * ranked[0].estimatedPod) < 1e-9);
+  assert.ok(ranked[0].expectedGain > 1, 'gain should be in points, not a fraction of a percent');
 });
 
 test('briefing is structured and serializable', () => {
@@ -154,4 +157,34 @@ test('lookups fail with actionable hints', () => {
     assert.ok(e instanceof EngineError);
     assert.match(e.hint, /Known segments/);
   }
+});
+
+test('undo after an agent log entry removes only that entry', async () => {
+  const { agentLogEntry } = await import('../src/engine.js');
+  const s = seededState();
+  const agent = checkIn(s, 'ChatGPT', 'planning');
+  const p = proposeAssignment(s, agent, 'T6', 'B2', 'Highest remaining POA, unsearched cliff band.');
+  agentLogEntry(s, agent, 'Considering the drainage next.');
+  undo(s);
+  assert.equal(s.proposals.find((x) => x.id === p.id).status, 'staged', 'proposal survives undo of the note');
+  assert.ok(!s.log.some((l) => /Considering the drainage/.test(l.text)));
+});
+
+test('undo after check in removes the agent and its log line', () => {
+  const s = seededState();
+  const before = s.log.length;
+  checkIn(s, 'ChatGPT', 'planning');
+  undo(s);
+  assert.equal(s.agents.length, 0);
+  assert.equal(s.log.length, before);
+});
+
+test('proposing for a searching team is flagged as a reassignment', () => {
+  const s = seededState();
+  const agent = checkIn(s, 'ChatGPT', 'planning');
+  const p = proposeAssignment(s, agent, 'Ground 2', 'B2', 'They are adjacent to the cliff band and fresh enough.');
+  assert.equal(p.reassignment, true);
+  assert.equal(p.pullsFrom, 'B1');
+  const q = proposeAssignment(s, agent, 'Ground 6', 'C2', 'Fresh team for the hardest timber.');
+  assert.equal(q.reassignment, false);
 });

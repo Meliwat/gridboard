@@ -47,7 +47,7 @@ const human = {
   reject(id) { board.rejecting = id; render(); setTimeout(() => document.getElementById('rejectReason')?.focus(), 0); },
   confirmReject(id) { const reason = document.getElementById('rejectReason')?.value || ''; board.rejecting = null; E.rejectProposal(board.state, id, 'IC', reason); afterHuman(); },
   cancelReject() { board.rejecting = null; render(); },
-  answer(id, opt) { E.answerDecision(board.state, id, opt, 'IC'); afterHuman(); },
+  answer(id, index) { const d = board.state.decisions.find((x) => x.id === id); if (!d) return; const opt = d.options[Number(index)]; if (opt === undefined) return; E.answerDecision(board.state, id, opt, 'IC'); afterHuman(); },
   focus(id) { if (board.state.focusedSegment === id) E.clearFocus(board.state); else E.focusSegment(board.state, id); board.tab = board.state.focusedSegment ? 'segment' : board.tab; afterHuman(); },
   undo() { try { E.undo(board.state); } catch (e) { toast(e.message); } afterHuman(); },
   reset() { if (!board.resetArmed) { board.resetArmed = true; render(); setTimeout(() => { board.resetArmed = false; render(); }, 4000); return; } board.resetArmed = false; board.state = E.seededState(); board.agent = null; sessionStorage.removeItem(AGENT_KEY); afterHuman(); },
@@ -159,7 +159,7 @@ function renderDecisions(s, staged, open, supported) {
       <div class="card decision">
         <div class="row"><span class="pill agent">${esc(d.askedBy)}</span><span class="meta">${esc(d.time)} · question ${esc(d.id)}</span></div>
         <div class="title">${esc(d.question)}</div>
-        <div class="opts">${d.options.map((o) => `<button class="btn small" onclick="human.answer('${d.id}', ${JSON.stringify(o).replace(/"/g, '&quot;')})">${esc(o)}</button>`).join('')}</div>
+        <div class="opts">${d.options.map((o, i) => `<button class="btn small" data-decision="${esc(d.id)}" data-option="${i}">${esc(o)}</button>`).join('')}</div>
       </div>`).join('')}
     ${staged.map(proposalCard).join('')}
     ${past.length ? '<h3>Decided</h3>' + past.map(proposalCard).join('') : ''}
@@ -172,8 +172,9 @@ function proposalCard(p) {
     <div class="card ${p.status}">
       <div class="row"><span class="pill ${p.status}">${esc(p.status)}</span><span class="pill agent">${esc(p.proposedBy)}</span><span class="meta">${esc(p.time)} · ${esc(p.id)}</span></div>
       <div class="title">${isAssign ? `${esc(p.teamCallsign)} → ${esc(p.segment)} ${esc(p.segmentName)} · ${esc(p.hours)}h` : `Rest ${esc(p.teamCallsign)}`}</div>
+      ${p.reassignment ? `<div class="meta" style="color:var(--amber)">Reassignment: pulls ${esc(p.teamCallsign)} off ${esc(p.pullsFrom)} mid-search</div>` : ''}
       <div class="rationale">${esc(p.rationale)}</div>
-      ${isAssign ? `<div class="nums"><span>remaining POA <b>${esc(p.remainingPoa)}%</b></span><span>est. POD <b>${esc(p.estimatedPod)}%</b></span><span>expected gain <b>${esc(p.expectedGain)}</b></span></div>` : ''}
+      ${isAssign ? `<div class="nums"><span>remaining POA <b>${esc(p.remainingPoa)}%</b></span><span>est. POD <b>${esc(p.estimatedPod)}%</b></span><span>expected gain <b>${esc(p.expectedGain)} pts</b></span></div>` : ''}
       ${p.status === 'staged' ? (board.rejecting === p.id
         ? `<div class="actions" style="flex-wrap:wrap"><input id="rejectReason" class="reason" placeholder="Reason (optional, goes in the log)" onkeydown="if(event.key==='Enter')human.confirmReject('${p.id}');if(event.key==='Escape')human.cancelReject()"><button class="btn danger" onclick="human.confirmReject('${p.id}')">Confirm reject</button><button class="btn" onclick="human.cancelReject()">Cancel</button></div>`
         : `<div class="actions"><button class="btn primary" onclick="human.approve('${p.id}')">Approve</button><button class="btn danger" onclick="human.reject('${p.id}')">Reject</button>${isAssign ? `<button class="btn" onclick="human.focus('${p.segment}')">Show on map</button>` : ''}</div>`) : `<div class="meta">${esc(p.decidedBy ? `${p.status} by ${p.decidedBy}` : '')} ${esc(p.reason || '')}</div>`}
@@ -307,6 +308,12 @@ function heat(v) {
 }
 function hhmm(iso) { const d = new Date(iso); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 function logoSvg() { return `<svg width="16" height="16" viewBox="0 0 100 100"><path d="M20 70 L45 35 L60 55 L72 40 L85 70 Z" fill="#f59e0b"/><circle cx="30" cy="30" r="8" fill="#38bdf8"/></svg>`; }
+
+// Delegated handler: agent-written option text never goes into an inline handler.
+app.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-decision]');
+  if (b) human.answer(b.dataset.decision, b.dataset.option);
+});
 
 // ---------------- Boot ----------------
 ctl.onChange((names) => {

@@ -21,7 +21,7 @@ GridBoard puts a human and their agent on the same live board. The agent has sup
 
 ## How WebMCP is used
 
-All tools are registered with `document.modelContext.registerTool` (with a `navigator.modelContext` fallback) in [`src/tools.js`](src/tools.js). The registration set is reconciled against board state after every change, so the tool list an agent sees is a live description of what the board will accept right now.
+All tools are registered with `document.modelContext.registerTool` (with a `navigator.modelContext` fallback) in [`src/tools.js`](src/tools.js). Each registration gets its own `AbortSignal`, and aborting it is how a tool is removed (the current spec has no `unregisterTool`; where a client exposes one it is called too). The registration set is reconciled against board state after every change, serialized so a human click and an agent call cannot race, so the tool list an agent sees is a live description of what the board will accept right now.
 
 **Three classes of tools**
 
@@ -63,6 +63,7 @@ npm run dev          # http://localhost:5173
 npm test             # engine + tool registration tests (node:test)
 npm run build
 node test/e2e-chrome.mjs http://localhost:4173/   # real Chrome with --enable-features=WebMCP, after `npm run preview`
+                                                  # asserts through the browser's own getTools() and executeTool()
 ```
 
 Add `?dev=1` to the URL for a console that calls tools the way an agent would, useful in browsers without WebMCP.

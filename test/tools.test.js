@@ -115,3 +115,50 @@ test('read tools return serializable structured data', async () => {
     JSON.stringify(r);
   }
 });
+
+test('team_lead check in with an unknown team writes nothing', async () => {
+  const { ctl, board } = makeBoard();
+  await ctl.sync();
+  const logBefore = board.state.log.length;
+  const r = await ctl.call('check_in', { name: 'Codex', role: 'TEAM_LEAD', team: 'Ground 99' });
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /Known teams/);
+  assert.equal(board.agent, null);
+  assert.equal(board.state.agents.length, 0);
+  assert.equal(board.state.log.length, logBefore);
+});
+
+test('role is normalized so TEAM_LEAD cannot become an unscoped team lead', async () => {
+  const { ctl, board } = makeBoard();
+  await ctl.sync();
+  const r = await ctl.call('check_in', { name: 'Codex', role: 'TEAM_LEAD' });
+  assert.equal(r.ok, false);
+  assert.equal(board.agent, null);
+});
+
+test('registration passes an AbortSignal and removal aborts it', async () => {
+  const board = { state: seededState(), agent: null, commit() {} };
+  const seen = new Map();
+  const mc = {
+    async registerTool(t, opts) { seen.set(t.name, opts?.signal); },
+  };
+  const ctl = createToolController(board, mc);
+  await ctl.sync();
+  assert.ok(seen.get('check_in') instanceof AbortSignal, 'registerTool receives a signal');
+  assert.equal(seen.get('check_in').aborted, false);
+  await ctl.call('check_in', { name: 'ChatGPT' });
+  assert.equal(seen.get('check_in').aborted, true, 'removing a tool aborts its signal even without unregisterTool');
+});
+
+test('schemas carry bounds for numeric and free-text inputs', async () => {
+  const { ctl } = makeBoard();
+  await ctl.sync();
+  await ctl.call('check_in', { name: 'ChatGPT' });
+  const pa = ctl.get('propose_assignment').inputSchema.properties;
+  assert.equal(pa.hours.minimum, 0.5);
+  assert.equal(pa.hours.maximum, 6);
+  assert.ok(pa.rationale.maxLength > 0);
+  const rd = ctl.get('request_decision').inputSchema.properties;
+  assert.equal(rd.options.minItems, 2);
+  assert.equal(rd.options.maxItems, 4);
+});
