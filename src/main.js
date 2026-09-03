@@ -279,7 +279,7 @@ function renderMap(s) {
     ${polys}${trails}${markers}${clues}
     <text x="20" y="668" fill="#8ea0bd" font-size="11" font-family="ui-monospace, monospace">Staging at ICP</text>
     ${idle.join('')}
-    <text x="985" y="705" fill="#8ea0bd" font-size="11" text-anchor="end" font-family="ui-monospace, monospace">Synthetic training scenario. Not a real incident.</text>
+    <text x="985" y="22" fill="#8ea0bd" font-size="11" text-anchor="end" font-family="ui-monospace, monospace">Synthetic training scenario. Not a real incident.</text>
   </svg>`;
 }
 
