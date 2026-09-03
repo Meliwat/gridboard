@@ -4,7 +4,7 @@
 
 ![GridBoard: map with probability-shaded segments, staged proposals awaiting the incident commander](docs/screenshot.png)
 
-Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/). Live: **https://gridboard-puce.vercel.app** (open it in ChatGPT's desktop browser, or Chrome 149+ with `chrome://flags/#enable-webmcp-testing`).
+Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/). Live: **https://gridboard-puce.vercel.app** (open it in ChatGPT's desktop browser, or Chrome 149+ with `chrome://flags/#enable-webmcp-testing`). Demo video: **https://youtu.be/LmdLcHETILI**
 
 Every year, tens of thousands of people go missing outdoors, and the first hours of a search decide most outcomes. An incident commander (IC) running a wilderness search is juggling probability maps, team fatigue, daylight, weather and radio traffic, mostly on paper and whiteboards. The math of search theory (probability of area, probability of detection, expected gain) is well understood but nobody has time to run it live.
 

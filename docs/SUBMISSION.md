@@ -6,7 +6,7 @@
 
 **Live URL:** https://gridboard-puce.vercel.app
 **Repo:** https://github.com/Meliwat/gridboard (MIT)
-**Video:** (YouTube link)
+**Video:** https://youtu.be/LmdLcHETILI
 
 ---
 
