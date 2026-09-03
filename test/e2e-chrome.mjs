@@ -88,6 +88,16 @@ try {
   check(!names3.includes('withdraw_proposal'), 'withdraw_proposal disappears when nothing is staged');
   check(!names3.some((n) => /approve|commit|dispatch/.test(n)), 'no approve tool ever registered');
 
+  // Inline reject flow (no browser dialogs, which embedded browsers may block)
+  const r4 = await evalJs(cdp, `window.gridboard.ctl.call('propose_assignment', { team: 'Drone 5', segment: 'D2', hours: 1, rationale: 'Thermal over open marsh before dark is cheap coverage.' }).then(JSON.stringify)`);
+  console.log('   propose Drone 5 ->', r4);
+  const p2 = JSON.parse(r4).staged;
+  await evalJs(cdp, `window.human.reject('${p2.id}')`);
+  check(await evalJs(cdp, `!!document.getElementById('rejectReason')`), 'reject shows an inline reason field');
+  await evalJs(cdp, `document.getElementById('rejectReason').value = 'Wind too high for the drone'; window.human.confirmReject('${p2.id}')`);
+  check(await evalJs(cdp, `window.gridboard.board.state.proposals.find(p => p.id === '${p2.id}').status === 'rejected'`), 'confirm reject marks the proposal rejected');
+  check(await evalJs(cdp, `/Wind too high/.test(window.gridboard.board.state.log.at(-1).text)`), 'rejection reason lands in the log');
+
   const errs = await evalJs(cdp, `window.gridboard.ctl.call('propose_assignment', { team: 'Nobody', segment: 'B2', rationale: 'Long enough rationale here.' }).then(JSON.stringify)`);
   check(JSON.parse(errs).ok === false && /Known teams/.test(JSON.parse(errs).hint), 'bad input returns a descriptive hint');
 

@@ -342,7 +342,15 @@ export function createToolController(board, mc = getModelContext()) {
   };
 
   // Reconcile registered tools with board state. Called after every change.
-  async function sync() {
+  // Serialized: a human click and an agent tool call can land in the same tick, and the browser
+  // rejects a registerTool that overlaps an in-flight unregisterTool for the same name.
+  let chain = Promise.resolve();
+  function sync() {
+    chain = chain.then(reconcile).catch((err) => console.warn('[gridboard] tool sync failed', err));
+    return chain;
+  }
+
+  async function reconcile() {
     const s = S();
     const agent = A();
     const want = new Map();

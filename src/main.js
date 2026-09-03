@@ -44,11 +44,13 @@ function persist() {
 // Human actions. These are the only way assignments take effect.
 const human = {
   approve(id) { E.approveProposal(board.state, id, 'IC'); afterHuman(); },
-  reject(id) { const reason = prompt('Reason (optional, goes in the log):') || ''; E.rejectProposal(board.state, id, 'IC', reason); afterHuman(); },
+  reject(id) { board.rejecting = id; render(); setTimeout(() => document.getElementById('rejectReason')?.focus(), 0); },
+  confirmReject(id) { const reason = document.getElementById('rejectReason')?.value || ''; board.rejecting = null; E.rejectProposal(board.state, id, 'IC', reason); afterHuman(); },
+  cancelReject() { board.rejecting = null; render(); },
   answer(id, opt) { E.answerDecision(board.state, id, opt, 'IC'); afterHuman(); },
   focus(id) { if (board.state.focusedSegment === id) E.clearFocus(board.state); else E.focusSegment(board.state, id); board.tab = board.state.focusedSegment ? 'segment' : board.tab; afterHuman(); },
   undo() { try { E.undo(board.state); } catch (e) { toast(e.message); } afterHuman(); },
-  reset() { if (!confirm('Reset the scenario? This clears the board, proposals and log.')) return; board.state = E.seededState(); board.agent = null; sessionStorage.removeItem(AGENT_KEY); afterHuman(); },
+  reset() { if (!board.resetArmed) { board.resetArmed = true; render(); setTimeout(() => { board.resetArmed = false; render(); }, 4000); return; } board.resetArmed = false; board.state = E.seededState(); board.agent = null; sessionStorage.removeItem(AGENT_KEY); afterHuman(); },
   clock(min) { E.advanceClock(board.state, min); afterHuman(); },
   teamReturning(teamId) {
     const t = E.findTeam(board.state, teamId);
@@ -102,7 +104,7 @@ function render() {
       <div class="actions">
         <button class="btn small" onclick="human.clock(30)" title="Advance the scenario clock 30 minutes">+30 min</button>
         <button class="btn small" onclick="human.undo()" ${s.history.length ? '' : 'disabled'} title="Undo the last write, human or agent">Undo</button>
-        <button class="btn small danger" onclick="human.reset()">Reset</button>
+        <button class="btn small danger" onclick="human.reset()">${board.resetArmed ? 'Click again to reset' : 'Reset'}</button>
       </div>
     </header>
     <div class="tryit">
@@ -172,7 +174,9 @@ function proposalCard(p) {
       <div class="title">${isAssign ? `${esc(p.teamCallsign)} → ${esc(p.segment)} ${esc(p.segmentName)} · ${esc(p.hours)}h` : `Rest ${esc(p.teamCallsign)}`}</div>
       <div class="rationale">${esc(p.rationale)}</div>
       ${isAssign ? `<div class="nums"><span>remaining POA <b>${esc(p.remainingPoa)}%</b></span><span>est. POD <b>${esc(p.estimatedPod)}%</b></span><span>expected gain <b>${esc(p.expectedGain)}</b></span></div>` : ''}
-      ${p.status === 'staged' ? `<div class="actions"><button class="btn primary" onclick="human.approve('${p.id}')">Approve</button><button class="btn danger" onclick="human.reject('${p.id}')">Reject</button>${isAssign ? `<button class="btn" onclick="human.focus('${p.segment}')">Show on map</button>` : ''}</div>` : `<div class="meta">${esc(p.decidedBy ? `${p.status} by ${p.decidedBy}` : '')} ${esc(p.reason || '')}</div>`}
+      ${p.status === 'staged' ? (board.rejecting === p.id
+        ? `<div class="actions" style="flex-wrap:wrap"><input id="rejectReason" class="reason" placeholder="Reason (optional, goes in the log)" onkeydown="if(event.key==='Enter')human.confirmReject('${p.id}');if(event.key==='Escape')human.cancelReject()"><button class="btn danger" onclick="human.confirmReject('${p.id}')">Confirm reject</button><button class="btn" onclick="human.cancelReject()">Cancel</button></div>`
+        : `<div class="actions"><button class="btn primary" onclick="human.approve('${p.id}')">Approve</button><button class="btn danger" onclick="human.reject('${p.id}')">Reject</button>${isAssign ? `<button class="btn" onclick="human.focus('${p.segment}')">Show on map</button>` : ''}</div>`) : `<div class="meta">${esc(p.decidedBy ? `${p.status} by ${p.decidedBy}` : '')} ${esc(p.reason || '')}</div>`}
     </div>`;
 }
 
