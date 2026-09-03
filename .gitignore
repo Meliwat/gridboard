@@ -3,4 +3,5 @@ dist
 .vercel
 .DS_Store
 *.png
+!public/og.png
 !docs/*.png
