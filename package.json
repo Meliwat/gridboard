@@ -1,0 +1,19 @@
+{
+  "name": "gridboard",
+  "version": "1.0.0",
+  "description": "Agent-native search and rescue incident board built on WebMCP",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.4.21"
+  },
+  "type": "module"
+}
