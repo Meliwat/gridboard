@@ -111,6 +111,16 @@ try {
   check(await evalJs(cdp, 'window.__pwned !== 1'), 'agent-written option text cannot execute script when clicked');
   check(await evalJs(cdp, `window.gridboard.board.state.decisions.at(-1).answer === ${JSON.stringify(xss)}`), 'the clicked option is recorded verbatim as data');
 
+  // Undo back past check-in must re-lock the write tools
+  await evalJs(cdp, `window.human.reset(); window.human.reset();`);
+  await sleep(200);
+  await evalJs(cdp, `window.gridboard.ctl.call('check_in', { name: 'Undo Agent' })`);
+  await evalJs(cdp, `window.human.undo()`);
+  await sleep(300);
+  const namesU = await browserTools(cdp);
+  check(namesU.includes('check_in') && !namesU.includes('propose_assignment'), 'undoing a check-in relocks write tools');
+  await evalJs(cdp, `window.gridboard.ctl.call('check_in', { name: 'E2E Agent' })`);
+
   const errs = await evalJs(cdp, `window.gridboard.ctl.call('propose_assignment', { team: 'Nobody', segment: 'B2', rationale: 'Long enough rationale here.' }).then(JSON.stringify)`);
   check(JSON.parse(errs).ok === false && /Known teams/.test(JSON.parse(errs).hint), 'bad input returns a descriptive hint');
 

@@ -49,7 +49,7 @@ const human = {
   cancelReject() { board.rejecting = null; render(); },
   answer(id, index) { const d = board.state.decisions.find((x) => x.id === id); if (!d) return; const opt = d.options[Number(index)]; if (opt === undefined) return; E.answerDecision(board.state, id, opt, 'IC'); afterHuman(); },
   focus(id) { if (board.state.focusedSegment === id) E.clearFocus(board.state); else E.focusSegment(board.state, id); board.tab = board.state.focusedSegment ? 'segment' : board.tab; afterHuman(); },
-  undo() { try { E.undo(board.state); } catch (e) { toast(e.message); } afterHuman(); },
+  undo() { try { E.undo(board.state); } catch (e) { toast(e.message); } if (board.agent && !board.state.agents.some((a) => a.id === board.agent.id)) board.agent = null; afterHuman(); },
   reset() { if (!board.resetArmed) { board.resetArmed = true; render(); setTimeout(() => { board.resetArmed = false; render(); }, 4000); return; } board.resetArmed = false; board.state = E.seededState(); board.agent = null; sessionStorage.removeItem(AGENT_KEY); afterHuman(); },
   clock(min) { E.advanceClock(board.state, min); afterHuman(); },
   teamReturning(teamId) {
